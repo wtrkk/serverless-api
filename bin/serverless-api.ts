@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import * as cdk from 'aws-cdk-lib/core';
-import { ServerlessAppStack } from '../lib/serverless-app-stack';
+import { ServerlessApiStack } from '../lib/serverless-api-stack';
 
 // デプロイ前に環境変数を指定し、紐づけるパラメータファイルを制御する
 const envName = process.env.NODE_ENV;
@@ -17,7 +17,7 @@ const config = require("../config/" + envName);
 const app = new cdk.App();
 
 // Stack作成
-const serverlessAppStack = new ServerlessAppStack(app, `${envName}-ServerlessAppStack`, {
+const serverlessApiStack = new ServerlessApiStack(app, `${envName}-ServerlessApiStack`, {
   env: {
     account: config.accountId,
     region: config.regionId

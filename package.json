@@ -1,8 +1,8 @@
 {
-  "name": "serverless-app",
+  "name": "serverless-api",
   "version": "0.1.0",
   "bin": {
-    "serverless-app": "bin/serverless-app.js"
+    "serverless-api": "bin/serverless-api.js"
   },
   "scripts": {
     "build": "tsc",
