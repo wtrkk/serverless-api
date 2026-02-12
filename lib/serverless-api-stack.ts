@@ -2,8 +2,8 @@ import * as cdk from 'aws-cdk-lib/core';
 import { Construct } from 'constructs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import * as nodejs from 'aws-cdk-lib/aws-lambda-nodejs';
-import * as apigw from 'aws-cdk-lib/aws-apigateway';
+import * as apigwv2 from 'aws-cdk-lib/aws-apigatewayv2';
+import * as integrations from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import * as path from 'path';
 
 interface ServerlessApiStackProps extends cdk.StackProps {
@@ -24,37 +24,54 @@ export class ServerlessApiStack extends cdk.Stack {
     /**
      * DynamoDB
      */
-    const table = new dynamodb.Table(this, "ItemsTable", {
+    const itemsTable = new dynamodb.Table(this, "ItemsTable", {
       tableName: `${config.common.project}-${config.common.env}-items-table`,
       partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
     /**
      * Lambda
      */
-    const fn = new lambda.Function(this, "ApiFunction", {
+    const apiFunction = new lambda.Function(this, "ApiFunction", {
       functionName: `${config.common.project}-${config.common.env}-api-function`,
       runtime: lambda.Runtime.PYTHON_3_14,
       handler: "lambda_function.lambda_handler",
       code: lambda.Code.fromAsset(path.join(__dirname, "../lambda")),
       environment: {
-        TABLE_NAME: table.tableName,
+        TABLE_NAME: itemsTable.tableName,
       },
     });
     // Lambda→DynamoDBへのReadWrite権限付与
-    table.grantReadWriteData(fn);
+    itemsTable.grantReadWriteData(apiFunction);
 
     /**
      * API GateWay
      */
-    const api = new apigw.LambdaRestApi(this, "ServerlessApi", {
-      restApiName: `${config.common.project}-${config.common.env}-serverless-api`,
-      handler: fn,
-      proxy: true
+    const httpApi = new apigwv2.HttpApi(this, "HttpApiApi", {
+      apiName: `${config.common.project}-${config.common.env}-http-api`,
     });
+    
+    // Lambda統合を作成
+    const integration = new integrations.HttpLambdaIntegration(
+      "LambdaIntegration",
+      apiFunction
+    );
 
+    const routes = [
+      { method: apigwv2.HttpMethod.GET, path: '/items/{id}' },
+      { method: apigwv2.HttpMethod.GET, path: '/items' },
+      { method: apigwv2.HttpMethod.PUT, path: '/items' },
+      { method: apigwv2.HttpMethod.DELETE, path: '/items/{id}' },
+    ];
+
+    routes.forEach(route => {
+      httpApi.addRoutes({
+        path: route.path,
+        methods: [route.method],
+        integration
+      });
+    });
 
   }
 }
